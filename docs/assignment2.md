@@ -33,6 +33,17 @@ The texture mapping and volumetric rendering notebooks does not depend on each o
 
 The starter code also comes with an interactive renderer that allows you to move around and render 3D scenes in real time. Follow the [interactive renderer guide](../docs/interactive-renderer.md) to learn how to use it.
 
+### Getting started on Part 2
+
+There're two tasks in part 2 of the assignment. The first one is training a neural texture. The second one is implementing a differentiable volume renderer that can be used to recover volume data from 2D images.
+
+These two tasks are independent, so you can work on them in any order.
+
+1. Please open [the neural texture notebook](../notebooks/assignment2-part2/neural-texture/neural-texture.ipynb) and follow the instructions in the notebook.
+2. For the differentiable volume renderer, there're two notebooks that you should follow that **IS** dependent on each other.
+    1. Please open [the differentiable texture notebook](../notebooks/assignment2-part2/volume-recovery/diff-texture.ipynb) and follow the instructions in the notebook. We'll walk you through the basics of automatic differentiation in Slang and how to implement a differentiable texture.
+    2. Please open [the volume recovery notebook](../notebooks/assignment2-part2/volume-recovery/volume-recovery.ipynb) and follow the instructions in the notebook. In this notebook, you'll implement a differentiable volume renderer and use it to recover volume data from a set of 2D images.
+
 ### Grading and Handin
 
 Assignment handin will be done on Gradescope.
