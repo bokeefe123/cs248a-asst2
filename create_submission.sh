@@ -41,6 +41,19 @@ for rel in "${FILES[@]}"; do
   cp "$src" "$dst_dir/"
 done
 
+# Copy recovered volume resources (.npy and .mp4 files)
+# Please place the recovered volumes (.npy files) and their animations (.mp4 files) in the resources/recovered_volumes directory.
+RECOVERED_DIR="${ROOT_DIR}/resources/recovered_volumes"
+if [[ -d "$RECOVERED_DIR" ]]; then
+  while IFS= read -r src; do
+    # Make path inside submission match project-relative path
+    rel="./${src#$ROOT_DIR/}"
+    dst_dir="${DEST_DIR}/$(dirname "$rel")"
+    mkdir -p "$dst_dir"
+    cp "$src" "$dst_dir/"
+  done < <(find "$RECOVERED_DIR" -type f \( -name '*.npy' -o -name '*.mp4' \))
+fi
+
 ZIP_NAME="${SUBMISSION_NAME}.zip"
 rm -f "${ROOT_DIR}/${ZIP_NAME}"
 (cd "$ROOT_DIR" && zip -r "$ZIP_NAME" "$(basename "$DEST_DIR")")
