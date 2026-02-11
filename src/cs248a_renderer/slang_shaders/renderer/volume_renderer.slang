@@ -43,6 +43,19 @@ public float4 volumeSample(float2 uv, RendererUniform uniforms, float tMax, floa
 }
 
 /**
+ * Backward pass for volumetric ray marching at a single uv.
+ * @param uv The normalized uv coordinate from (0, 0) in the bottom-left to (1, 1) in the top-right.
+ * @param uniforms The renderer uniform containing camera, sampling, and scene information.
+ * @param outGrad The output gradient w.r.t. the sampled color.
+ */
+public void volumeSampleBwd(float2 uv, RendererUniform uniforms, float4 outGrad)
+{
+    // TODO: Student implementation starts here.
+
+    // TODO: Student implementation ends here.
+}
+
+/**
  * Ray march through the volume and accumulate color.
  * @param ray The ray in local space.
  * @param volumeBound The bounding box of the volume in local space.

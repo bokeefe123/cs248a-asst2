@@ -108,3 +108,27 @@ public float4 render(uint2 tid, RendererUniform uniforms)
     return returnedColor;
     // TODO: Student implementation ends here.
 }
+
+/**
+ * Backward pass for volume sampling at a single uv.
+ * @param uv The normalized uv coordinate from (0, 0) in the bottom-left to (1, 1) in the top-right.
+ * @param uniforms The renderer uniform containing camera, sampling, and scene information.
+ * @param outGrad The output gradient w.r.t. the sampled color.
+ */
+public void sampleVolumeBwd(float2 uv, RendererUniform uniforms, float4 outGrad)
+{
+    volumeSampleBwd(uv, uniforms, outGrad);
+}
+
+/**
+ * Backward pass for volume rendering at a pixel.
+ * @param tid The 2D coordinate of the current thread. Ranges from (0, 0) to (canvasSize.x - 1, canvasSize.y - 1).
+ * @param uniforms The renderer uniform containing camera, sampling, and scene information.
+ * @param outGrad The output gradient w.r.t. the rendered pixel color.
+ */
+public void renderVolumeBwd(uint2 tid, RendererUniform uniforms, float4 outGrad)
+{
+    // For simplicity, we're not implementing supersampling in the backward pass.
+    float2 uv = (float2(tid) + 0.5) / float2(uniforms.camera.canvasSize);
+    sampleVolumeBwd(uv, uniforms, outGrad);
+}
