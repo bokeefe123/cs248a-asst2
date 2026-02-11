@@ -12,7 +12,9 @@ public struct Triangle : IBoundingBox, IRayCastable
 
     public BoundingBox boundingBox()
     {
-        return BoundingBox(float3(0.0), float3(0.0));
+        float3 pMin = min(min(vertices[0], vertices[1]), vertices[2]);
+        float3 pMax = max(max(vertices[0], vertices[1]), vertices[2]);
+        return BoundingBox(pMin, pMax);
     }
 
     /* Returns the average color of the triangle. */
@@ -29,15 +31,17 @@ public struct Triangle : IBoundingBox, IRayCastable
     public float3 calculateBarycentricCoord(float3 p)
     {
         const float EPSILON = 1e-6;
-        float u = 0.0;
-        float v = 0.0;
-        float w = 0.0;
 
         // TODO: Student implementation starts here.
+        float3 normalVector = cross(vertices[1] - vertices[0], vertices[2] - vertices[0]);
+        float triangleArea = length(normalVector);
+        float alpha = length(cross(p - vertices[1], p - vertices[2])) / (triangleArea);
+        float beta = length(cross(p - vertices[2], p - vertices[0])) / (triangleArea);
+        float gamma = length(cross(p - vertices[0], p - vertices[1])) / (triangleArea);
 
         // TODO: Student implementation ends here.
 
-        return float3(u, v, w);
+        return float3(alpha, beta, gamma);
     }
 
     public float2 getUV(float3 barycentricCoord)
@@ -78,6 +82,20 @@ public struct Triangle : IBoundingBox, IRayCastable
     public Optional<RayHitResult> hit(Ray ray)
     {
         // TODO: Student implementation starts here.
+
+        float3 normalVector = cross(vertices[1] - vertices[0], vertices[2] - vertices[0]);
+        float triangleArea = length(normalVector);
+        // normalVector = normalize(normalVector);
+        float offset = dot(normalVector, vertices[0]);
+        float t = (offset - dot(normalVector, ray.origin)) / dot(normalVector, normalize(ray.direction));
+        float3 p = ray.origin + t * normalize(ray.direction);
+
+        float alpha = length(cross(p - vertices[1], p - vertices[2])) / (triangleArea);
+        float beta = length(cross(p - vertices[2], p - vertices[0])) / (triangleArea);
+        float gamma = length(cross(p - vertices[0], p - vertices[1])) / (triangleArea);
+        if (alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1 && abs(alpha + beta + gamma - 1.0) < 1e-6) {
+            return Optional<RayHitResult>(RayHitResult(t, normalVector));
+        } 
 
         return Optional<RayHitResult>();
 

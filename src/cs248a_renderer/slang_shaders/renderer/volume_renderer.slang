@@ -20,9 +20,25 @@ public static float DENSITY_SCALE = 5.0;
 public float4 volumeSample(float2 uv, RendererUniform uniforms, float tMax, float4 primColor)
 {
     // TODO: Student implementation starts here.
-
-    return primColor;
-    
+    Optional<RayHitResult> closestHitResult;
+    Optional<RayHitResult> hitResult;
+    Ray ray = uniforms.camera.generateRay(uv);
+    for (uint i = 0; i < uniforms.surfaceVolumeCount; i++)
+    {
+        Volume volume = uniforms.surfaceVolumeBuf[i];
+        hitResult = volume.hit(ray, uniforms.surfaceVolumeTexBuf);
+        if (!hitResult.hasValue) {}
+        else if (!closestHitResult.hasValue) {
+            closestHitResult = hitResult;
+        }
+        else if (hitResult.value.t < closestHitResult.value.t) {
+            closestHitResult = hitResult;
+        }  
+    }
+    if (!closestHitResult.hasValue) {
+        return primColor;
+    } 
+    return float4(closestHitResult.value.normal * 0.5 + 0.5, 1.0);
     // TODO: Student implementation ends here.
 }
 

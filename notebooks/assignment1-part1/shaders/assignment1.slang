@@ -24,12 +24,9 @@ public float4 fillRed(uint2 tid)
 public float4 fillGradient(uint2 tid, uint2 canvasSize)
 {
     // TODO: Student implementation starts here.
-
-    float2 uv = float2(0.0);
+    return float4(float2(tid) / float2(canvasSize), 0.0, 1.0);
 
     // TODO: Student implementation ends here.
-    
-    return float4(1.0, 0.0, 1.0, 1.0);
 }
 
 /**
@@ -42,10 +39,29 @@ public float4 fillGradient(uint2 tid, uint2 canvasSize)
 public float4 fillCheckerboard(uint2 tid, uint2 canvasSize, uint numSquares)
 {
     // TODO: Student implementation starts here.
-
-    return float4(1.0, 0.0, 1.0, 1.0);
+    uint2 square = canvasSize / numSquares;
+    uint2 squarePos = tid / square;
+    uint2 squareType = squarePos % 2;
+    float squareColor = float(squareType.x == squareType.y);
+    return float4(float3(squareColor), 1.0);
 
     // TODO: Student implementation ends here.
+}
+/**
+ * Check a single point inside triangle
+ * Uses the equation defined on lecture 1 slide 69.
+ * @param p The normalized position of the point. Ranges from (0,0) to (1,1)
+ * @param firstPoint The normalized first point in the triangle equation.
+ * @param secondPoint The normalized second point in the triangle equation.
+ */
+internal bool pointInsideTrianle(float2 p, float2 firstPoint, float2 secondPoint) 
+{
+    float a_i = secondPoint.y - firstPoint.y;
+    float b_i = firstPoint.x - secondPoint.x;
+    float c_i = firstPoint.y * (secondPoint.x - firstPoint.x) - firstPoint.x * (secondPoint.y - firstPoint.y);
+    float lineValue = a_i * p.x + b_i * p.y + c_i;
+    return lineValue < 0.0;
+
 }
 
 /**
@@ -60,8 +76,10 @@ public float4 fillCheckerboard(uint2 tid, uint2 canvasSize, uint numSquares)
 public float4 triangleRasterizer(uint2 tid, uint2 canvasSize, float2 v0, float2 v1, float2 v2)
 {
     // TODO: Student implementation starts here.
+    float2 p = (float2(tid) + 0.5) / float2(canvasSize);
 
-    return float4(1.0, 0.0, 1.0, 1.0);
+    bool insideAll = pointInsideTrianle(p, v0, v1) && pointInsideTrianle(p, v1, v2) && pointInsideTrianle(p, v2, v0);
+    return float4(float3(insideAll), 1.0);
 
     // TODO: Student implementation ends here.
 }
@@ -85,6 +103,7 @@ public float4 rayTriangleTest(uint2 tid, uint2 canvasSize, StructuredBuffer<Tria
     Optional<RayHitResult> hitResult = triangle.hit(ray);
     if (hitResult.hasValue)
     {
+        // return float4(hitResult.value.normal, 1.0);
         return float4(triangle.averageColor(), 1.0);
     }
     else
@@ -106,8 +125,34 @@ public float4 rayTrianglesTest(uint2 tid, uint2 canvasSize, StructuredBuffer<Tri
     // We generate rays with origin from (0, 0, 0) to (1, 1, 0) and direction towards the negative z axis (0, 0, -1).
     float2 uv = float2(tid) / float2(canvasSize);
     Ray ray = Ray(float3(uv, 0.0), float3(0.0, 0.0, -1.0), float2(0.0, float.maxValue));
-
+    Optional<RayHitResult> closestHitResult;
+    Optional<RayHitResult> hitResult;
+    float3 resultColor;
     // TODO: Student implementation starts here.
-    return float4(1.0, 0.0, 1.0, 1.0);
+    for (uint i = 0; i < triangleCount; i++)
+    {
+        Triangle triangle = triangles[i];
+        hitResult = triangle.hit(ray);
+        if (!hitResult.hasValue) {}
+        else if (!closestHitResult.hasValue) {
+            closestHitResult = hitResult;
+            resultColor = triangle.averageColor();
+        }
+        else if (hitResult.value.t < closestHitResult.value.t) {
+            closestHitResult = hitResult;
+            resultColor = triangle.averageColor();
+        }
+        
+    }
+    if (closestHitResult.hasValue)
+    {
+        // return float4(hitResult.value.normal, 1.0);
+        return float4(resultColor, 1.0);
+    }
+    else
+    {
+        return float4(0.0, 0.0, 0.0, 1.0);
+    }
+
     // TODO: Student implementation starts here.
 }

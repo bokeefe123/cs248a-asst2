@@ -92,7 +92,19 @@ public float4 render(uint2 tid, RendererUniform uniforms)
     // TODO: Student implementation starts here.
 
     // Basic version: no supersampling.
-    float2 uv = (float2(tid) + 0.5) / float2(uniforms.camera.canvasSize);
-    return sample(uv, uniforms);
+    float4 returnedColor = float4(0);
+    float2 uv = float2(0);
+    float xOffset, yOffset;
+    for (int i = 0; i < uniforms.sqrtSpp; i++) {
+
+        for (int j = 0; j < uniforms.sqrtSpp; j++) {
+            xOffset = 0.5 / float(uniforms.sqrtSpp) + float(i)*(1.0 / float(uniforms.sqrtSpp));
+            yOffset = 0.5 / float(uniforms.sqrtSpp) + float(j)*(1.0 / float(uniforms.sqrtSpp));
+            uv = float2(tid.x + xOffset, tid.y + yOffset);
+            uv = uv / float2(uniforms.camera.canvasSize);
+            returnedColor += sample(uv, uniforms) / float(uniforms.sqrtSpp * uniforms.sqrtSpp);
+        }
+    }
+    return returnedColor;
     // TODO: Student implementation ends here.
 }

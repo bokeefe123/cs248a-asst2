@@ -96,10 +96,7 @@ public struct SphereSDF : ISDF
     public float sdf(float3 point)
     {
         // TODO: Student implementation starts here.
-
-        float3 localPoint = mul(this.invModelMatrix, float4(point, 1.0)).xyz;
-        return length(localPoint - this.center) - this.radius;
-
+        return length(point - center) - radius;
         // TODO: Student implementation ends here.
     }
 
@@ -107,8 +104,7 @@ public struct SphereSDF : ISDF
     {
         // TODO: Student implementation starts here.
 
-        float3 localPoint = mul(this.invModelMatrix, float4(point, 1.0)).xyz;
-        return normalize(localPoint - this.center);
+        return normalize(point - center);
 
         // TODO: Student implementation ends here.
     }
@@ -123,14 +119,38 @@ public struct CubeSDF : ISDF
     public float sdf(float3 point)
     {
         // TODO: Student implementation starts here.
-        return 0.0;
+        float3 localPoint = abs(mul(invModelMatrix, float4(point, 1)).xyz);
+        float3 pointDist = localPoint - size / 2.0;
+        return length(max(pointDist, 0.0)) + min(max(pointDist.x, max(pointDist.y, pointDist.z)), 0.0);
+
         // TODO: Student implementation ends here.
+    }
+
+    float4x4 manualTranspose(float4x4 m)
+    {
+        return float4x4(
+            m[0][0], m[1][0], m[2][0], m[3][0],
+            m[0][1], m[1][1], m[2][1], m[3][1],
+            m[0][2], m[1][2], m[2][2], m[3][2],
+            m[0][3], m[1][3], m[2][3], m[3][3]
+        );
     }
 
     public float3 normal(float3 point)
     {
         // TODO: Student implementation starts here.
-        return float3(0.0);
+        float3 localPoint = mul(invModelMatrix, float4(point, 1)).xyz;
+        float3 pointDist = abs(localPoint) - size;
+        float maxAxis = max(pointDist.x, max(pointDist.y, pointDist.z));
+        float3 localNorm = float3(
+            pointDist.x == maxAxis ? sign(localPoint.x) : 0.0,
+            pointDist.y == maxAxis ? sign(localPoint.y) : 0.0,
+            pointDist.z == maxAxis ? sign(localPoint.z) : 0.0,
+        );
+        float4x4 transposedMatrix = manualTranspose(invModelMatrix);
+        float3 normal = mul(transposedMatrix, float4(localNorm, 0.0)).xyz;
+        return normalize(normal);
+
         // TODO: Student implementation ends here.
     }
 }

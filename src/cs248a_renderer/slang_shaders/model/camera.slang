@@ -19,10 +19,12 @@ public struct Camera
     public Ray generateRay(float2 uv)
     {
         // TODO: Student implementation starts here.
-        Ray ray = Ray(float3(0.0), float3(0.0)); // Placeholder
+        float2 scaledUV = (uv * float2(canvasSize)) - (float2(canvasSize) / 2.0);
+        // float adjustedX = (uv.x * focalLength);
+        // float adjustedY = (uv.y * focalLength);
+
+        return Ray(float3(0, 0, 0), normalize(float3(scaledUV.x, scaledUV.y, -focalLength)), float2(0.001, 100.0)).transform(invViewMatrix);
 
         // TODO: Student implementation ends here.
-
-        return ray;
     }
 }
