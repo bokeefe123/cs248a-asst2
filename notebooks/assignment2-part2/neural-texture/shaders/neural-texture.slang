@@ -40,9 +40,12 @@ float[20] getPositionalEncoding(no_diff float2 uv)
     float[NUM_LEVELS * 4] pos_enc;
 
     // TODO: Student implementation starts here.
-    for(int i = 0; i < 20; ++i)
+    for(int i = 0; i < NUM_LEVELS; ++i)
     {
-        pos_enc[i] = 0.0;
+       pos_enc[i * 4 + 0] = sin(pow(2.0, i) * PI_F * uv.x);
+       pos_enc[i * 4 + 1] = cos(pow(2.0, i) * PI_F * uv.x);
+       pos_enc[i * 4 + 2] = sin(pow(2.0, i) * PI_F * uv.y);
+       pos_enc[i * 4 + 3] = cos(pow(2.0, i) * PI_F * uv.y);
     }
     // TODO: Student implementation starts here.
     return pos_enc;

@@ -49,7 +49,14 @@ class MaterialField[T]:
         #  with other mipmap levels, in increasing order of levels.
         textures = [base_texture]
         # TODO: Student implementation starts here.
-        
+        for i in range(1, self.MAX_MIP_LEVELS):
+            prev = textures[i - 1]
+            h, w = prev.shape[:2]
+            if h <= 1 or w <= 1:
+                break
+            uint8_tex = (prev * 255).astype(np.uint8)
+            resized = np.array(Image.fromarray(uint8_tex).resize((w // 2, h // 2), Image.BILINEAR))
+            textures.append(resized.astype(np.float32) / 255.0)
         # TODO: Student implementation ends here.
 
         self.textures = textures

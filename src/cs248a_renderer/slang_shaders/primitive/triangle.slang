@@ -35,9 +35,11 @@ public struct Triangle : IBoundingBox, IRayCastable
         // TODO: Student implementation starts here.
         float3 normalVector = cross(vertices[1] - vertices[0], vertices[2] - vertices[0]);
         float triangleArea = length(normalVector);
-        float alpha = length(cross(p - vertices[1], p - vertices[2])) / (triangleArea);
-        float beta = length(cross(p - vertices[2], p - vertices[0])) / (triangleArea);
-        float gamma = length(cross(p - vertices[0], p - vertices[1])) / (triangleArea);
+        float3 unitNormal = normalVector / triangleArea;
+        
+        float alpha = dot(cross(p - vertices[1], p - vertices[2]), unitNormal) / triangleArea;
+        float beta = dot(cross(p - vertices[2], p - vertices[0]), unitNormal) / triangleArea;
+        float gamma = dot(cross(p - vertices[0], p - vertices[1]), unitNormal) / triangleArea;
 
         // TODO: Student implementation ends here.
 
@@ -93,7 +95,7 @@ public struct Triangle : IBoundingBox, IRayCastable
         float alpha = length(cross(p - vertices[1], p - vertices[2])) / (triangleArea);
         float beta = length(cross(p - vertices[2], p - vertices[0])) / (triangleArea);
         float gamma = length(cross(p - vertices[0], p - vertices[1])) / (triangleArea);
-        if (alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1 && abs(alpha + beta + gamma - 1.0) < 1e-6) {
+        if (alpha >= 0 && alpha <= 1 && beta >= 0 && beta <= 1 && gamma >= 0 && gamma <= 1 && abs(alpha + beta + gamma - 1.0) < 1e-4) {
             return Optional<RayHitResult>(RayHitResult(t, normalVector));
         } 
 

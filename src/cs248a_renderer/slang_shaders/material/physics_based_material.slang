@@ -41,6 +41,8 @@ public PhysicsBasedParameters sampleMaterial(
 {
     PhysicsBasedParameters params;
     float clampedMipLevel = clamp(mipLevel, 0.0, float(material.albedo.totalLevels - 1));
+    // params.albedo = float3(material.albedo.totalLevels == 1 ? 1.0 : 0.0);
+    // return params;
     if (visualizeLevelOfDetail)
     {
         // gradation of blue color to light cyan

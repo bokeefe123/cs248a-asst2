@@ -32,12 +32,20 @@ public Optional<RayMeshSampleResult> meshSample(float2 uv, RendererUniform unifo
     Optional<RayMeshIntersectionResult> rayMeshIntersectionResult = rayMeshIntersection(ray, uniforms);
     if (rayMeshIntersectionResult.hasValue)
     {
-        RayHitResult result = rayMeshIntersectionResult.value.closestHit;
+        result = rayMeshIntersectionResult.value.closestHit;
         float3 hitPoint = ray.origin + result.t * ray.direction;
         float3 barycentricCoord = rayMeshIntersectionResult.value.hitTriangle.calculateBarycentricCoord(hitPoint);
         float3 normal = result.normal;
         float2 tex_uv = rayMeshIntersectionResult.value.hitTriangle.getUV(barycentricCoord);
-        float4 color = shadeTriangle(uv, uniforms, rayMeshIntersectionResult.value.hitTriangle, ray, tex_uv, normal, barycentricCoord);
+        float4 color = shadeTriangle(
+            uv, 
+            uniforms, 
+            rayMeshIntersectionResult.value.hitTriangle, 
+            ray, 
+            tex_uv, 
+            rayMeshIntersectionResult.value.hitTriangle.getNormal(barycentricCoord), 
+            barycentricCoord
+        );
         allResult = Optional<RayMeshSampleResult>(RayMeshSampleResult(result.t, normal, color));
     }
 
@@ -92,16 +100,17 @@ public Optional<RayMeshIntersectionResult> rayMeshIntersection(Ray ray, Renderer
 }
 
 // Helper function to get texture UV at an offset screen position
-float2 getTexUVAtOffset(RendererUniform uniforms, Triangle triangle, float2 offsetUV)
+// Returns an Optional - empty if the offset ray doesn't hit the triangle
+Optional<float2> getTexUVAtOffset(RendererUniform uniforms, Triangle triangle, float2 offsetUV)
 {
     Ray ray = uniforms.camera.generateRay(offsetUV);
     Optional<RayHitResult> result = triangle.hit(ray);
     if (!result.hasValue) {
-        return float2(0.0);
+        return Optional<float2>();
     }
     float3 hitPoint = ray.origin + result.value.t * ray.direction;
     float3 barycentricCoord = triangle.calculateBarycentricCoord(hitPoint);
-    return triangle.getUV(barycentricCoord);
+    return Optional<float2>(triangle.getUV(barycentricCoord));
 }
 
 // Compute the level of the texture at the hit point.
@@ -115,33 +124,39 @@ public float getLevel(float2 uv, RendererUniform uniforms, Triangle triangle, fl
     float level = 0.0;
 
     // TODO: Student implementation starts here.
-    
-    // Compute pixel size in normalized screen coordinates
+
+    // One pixel step in normalized screen coordinates
     float dx = 1.0 / float(uniforms.camera.canvasSize.x);
     float dy = 1.0 / float(uniforms.camera.canvasSize.y);
-    
-    // Ray differential method: shoot 4 rays (∂x⁺, ∂x⁻, ∂y⁺, ∂y⁻)
-    // Use central differences for more accurate derivative estimation
-    
-    // Shoot rays offset in +x and -x direction to compute ρₓ
-    float2 texUV_px_pos = getTexUVAtOffset(uniforms, triangle, uv + float2(dx, 0.0));
-    float2 texUV_px_neg = getTexUVAtOffset(uniforms, triangle, uv - float2(dx, 0.0));
-    float2 duvdx = (texUV_px_pos - texUV_px_neg) / (2.0 * dx);
+
+    // Get texture UVs at screen positions offset by one pixel in x and y
+    // Optional<float2> texUV_opt = getTexUVAtOffset(uniforms, triangle, uv);
+    // if (!texUV_opt.hasValue) {
+    //     return 0.0;
+    // }
+    Optional<float2> texUV_pos_dx_opt = getTexUVAtOffset(uniforms, triangle, uv + float2(dx, 0.0));
+    Optional<float2> texUV_neg_dx_opt = getTexUVAtOffset(uniforms, triangle, uv - float2(dx, 0.0));
+    Optional<float2> texUV_pos_dy_opt = getTexUVAtOffset(uniforms, triangle, uv + float2(0.0, dy));
+    Optional<float2> texUV_neg_dy_opt = getTexUVAtOffset(uniforms, triangle, uv - float2(0.0, dy));
+
+    // If offset rays miss the triangle, use the current tex_uv as fallback
+   
+    float2 texUV_dx = texUV_pos_dx_opt.hasValue ? texUV_pos_dx_opt.value : texUV_neg_dx_opt.hasValue ? texUV_neg_dx_opt.value : tex_uv;
+    float2 texUV_dy = texUV_pos_dy_opt.hasValue ? texUV_pos_dy_opt.value : texUV_neg_dy_opt.hasValue ? texUV_neg_dy_opt.value : tex_uv;
+
+    float2 duvdx = (texUV_dx - tex_uv) / dx;
+    float2 duvdy = (texUV_dy - tex_uv) / dy;
+
     float rho_x = length(duvdx);
-    
-    // Shoot rays offset in +y and -y direction to compute ρᵧ
-    float2 texUV_py_pos = getTexUVAtOffset(uniforms, triangle, uv + float2(0.0, dy));
-    float2 texUV_py_neg = getTexUVAtOffset(uniforms, triangle, uv - float2(0.0, dy));
-    float2 duvdy = (texUV_py_pos - texUV_py_neg) / (2.0 * dy);
     float rho_y = length(duvdy);
-    
-    // D = log₂(max(ρₓ, ρᵧ))
+
     float rho = max(rho_x, rho_y);
-    level = log2(max(rho, 1e-6));  // Avoid log2(0)
-    
-    // TODO: Student implementation ends here.
+    level = log2(max(rho, 1.0));
+
     return level;
-}   
+
+    // TODO: Student implementation ends here.
+}  
 
 public float4 shadeTriangle(float2 uv, RendererUniform uniforms, Triangle triangle, Ray ray, float2 tex_uv, float3 normal, float3 barycentricCoord)
 {
@@ -155,6 +170,12 @@ public float4 shadeTriangle(float2 uv, RendererUniform uniforms, Triangle triang
     }
     // Get the level of detail of the texture at the hit point.
     float level = getLevel(uv, uniforms, triangle, tex_uv);
+    // visualize level
+    // if (uniforms.visualizeLevelOfDetail)
+    // {
+    //     uint discreteLevel = uint(level);
+    //     return float4(float3(discreteLevel) / 4.0, 1.0);
+    // }
     uint discreteLevel = uint(level);
 
     // Sample albedo from the material at the hit point.

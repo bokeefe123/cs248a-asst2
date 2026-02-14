@@ -3,7 +3,7 @@ implementing "../renderer.slang";
 import math;
 import texture;
 
-public static uint MAX_STEPS = 1024;
+public static const uint MAX_STEPS = 1024;
 public static float EPSILON = 1e-6;
 
 public static float STEP_SIZE = 0.01;
@@ -20,13 +20,16 @@ public static float DENSITY_SCALE = 5.0;
 public float4 volumeSample(float2 uv, RendererUniform uniforms, float tMax, float4 primColor)
 {
     // TODO: Student implementation starts here.
-    Optional<RayHitResult> closestHitResult;
-    Optional<RayHitResult> hitResult;
+    
+    // Generate camera ray in world space
     Ray ray = uniforms.camera.generateRay(uv);
+    ray.tRange.y = min(ray.tRange.y, tMax);
+    
+    Optional<RayHitResult> closestHitResult;
     for (uint i = 0; i < uniforms.surfaceVolumeCount; i++)
     {
         Volume volume = uniforms.surfaceVolumeBuf[i];
-        hitResult = volume.hit(ray, uniforms.surfaceVolumeTexBuf);
+        Optional<RayHitResult> hitResult = volume.hit(ray, uniforms.surfaceVolumeTexBuf);
         if (!hitResult.hasValue) {}
         else if (!closestHitResult.hasValue) {
             closestHitResult = hitResult;
@@ -35,10 +38,25 @@ public float4 volumeSample(float2 uv, RendererUniform uniforms, float tMax, floa
             closestHitResult = hitResult;
         }  
     }
-    if (!closestHitResult.hasValue) {
-        return primColor;
-    } 
-    return float4(closestHitResult.value.normal * 0.5 + 0.5, 1.0);
+    
+    if (closestHitResult.hasValue) {
+        ray.tRange.y = min(ray.tRange.y, closestHitResult.value.t);
+        primColor = float4(closestHitResult.value.normal * 0.5 + 0.5, 1.0);
+    }
+    
+    Ray localRay = ray.transform(uniforms.volume.invModelMatrix);
+    
+    float4 color = accumulateColor<4>(
+        localRay,
+        uniforms.volume.bound,
+        MAX_STEPS,
+        STEP_SIZE,
+        DENSITY_SCALE,
+        primColor,
+        uniforms.volume.tex
+    );
+    
+    return color;
     // TODO: Student implementation ends here.
 }
 
@@ -51,7 +69,34 @@ public float4 volumeSample(float2 uv, RendererUniform uniforms, float tMax, floa
 public void volumeSampleBwd(float2 uv, RendererUniform uniforms, float4 outGrad)
 {
     // TODO: Student implementation starts here.
+    Ray ray = uniforms.camera.generateRay(uv);
+    
+    Optional<RayHitResult> closestHitResult;
+    for (uint i = 0; i < uniforms.surfaceVolumeCount; i++)
+    {
+        Volume volume = uniforms.surfaceVolumeBuf[i];
+        Optional<RayHitResult> hitResult = volume.hit(ray, uniforms.surfaceVolumeTexBuf);
+        if (!hitResult.hasValue) {}
+        else if (!closestHitResult.hasValue) {
+            closestHitResult = hitResult;
+        }
+        else if (hitResult.value.t < closestHitResult.value.t) {
+            closestHitResult = hitResult;
+        }  
+    }
+    
+    if (closestHitResult.hasValue) {
+        ray.tRange.y = min(ray.tRange.y, closestHitResult.value.t);
+    }  
+    Ray localRay = ray.transform(uniforms.volume.invModelMatrix);
 
+    DifferentialPtrPair<DiffTexture3D<float, 4>> diffAccumulateColorPair = 
+        DifferentialPtrPair<DiffTexture3D<float, 4>>(
+            uniforms.volume.tex,
+            uniforms.volume.dTex
+        );
+    float4 backgroundColor = uniforms.ambientColor;
+    bwd_diff(accumulateColor<4>)(localRay, uniforms.volume.bound, MAX_STEPS, STEP_SIZE, DENSITY_SCALE, backgroundColor, diffAccumulateColorPair, outGrad);
     // TODO: Student implementation ends here.
 }
 
@@ -78,8 +123,55 @@ public float4 accumulateColor<let N : uint>(
     DiffTexture3D<float, 4> data)
 {
     // TODO: Student implementation starts here.
+    
+    float2 tHit = volumeBound.hit(ray);
+    if (tHit.x < 0.0 || tHit.y < 0.0)
+    {
+        return backgroundColor;
+    }
+    float tEnter = max(tHit.x, ray.tRange.x);
+    float tExit = min(tHit.y, ray.tRange.y);
+    if (tEnter >= tExit) {
+        return backgroundColor;
+    }
 
-    return float4(1.0, 0.0, 1.0, 1.0);
+    float3 accumulatedColor = float3(0.0, 0.0, 0.0);
+    float transmittance = 1.0;
+    float3 volumeMin = volumeBound.pMin;
+    float3 volumeSize = volumeBound.pMax - volumeBound.pMin;
+
+    [MaxIters(MAX_STEPS)]
+    for (uint step = 0; step < maxSteps; step++)
+    {
+        float t = tEnter + float(step) * stepSize;
+        if (t >= tExit)
+        {
+            break;
+        }
+        if (transmittance < EPSILON)
+        {
+            break;
+        }
+        
+        float3 pos = ray.origin + t * ray.direction;
+        
+        float3 uvw = (pos - volumeMin) / volumeSize;
+        
+        float4 sample = sampleTrilinear(data, uvw);
+        float3 emission = sample.rgb;
+        float density = sample.a * densityScale;
+        
+        float alpha = 1.0 - exp(-density * stepSize);
+        
+        accumulatedColor += transmittance * alpha * emission;
+        
+        transmittance *= (1.0 - alpha);
+    }
+    
+    float3 finalColor = accumulatedColor + transmittance * backgroundColor.rgb;
+    float finalAlpha = (1.0 - transmittance) + transmittance * backgroundColor.a;
+    
+    return float4(finalColor, finalAlpha);
 
     // TODO: Student implementation ends here.
 }
